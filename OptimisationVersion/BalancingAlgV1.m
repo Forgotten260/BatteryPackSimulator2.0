@@ -1,0 +1,126 @@
+function [BalancingStatus, SortedCellIDs] = BalancingAlgV1(CellArray, SeriesCells,PrevSortedCellIDs)
+%BALANCINGALG - Algorith Version 1 for sorting out what balancing should be
+%done to what cells. 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Algorithm Parameters:
+
+    MaxCuttOff = 4.2;
+    MinCutOff = 2.5;
+    
+    LowerBuffer = 2.5 + 0.2; % + Internal resistance basically + Buffer. If no cells are in this zone the no chance of cells being unbalanced. 
+    UpperBuffer = 4.2 -0.2;
+    
+    CentralBuffer = 0.00005; % If cell voltages are within this zone either side then they won't be balanced. 
+    
+    MaxCellsToCharge = 5;  %Ie cells in the secondary for discharge
+    MaxCellsToDischarge = 3; %Ie cells in the secondary for charge
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Extract OCV and Cell ID Values
+%                                                                                                                                                                                                                    
+
+    V_OCV = zeros(1,SeriesCells);
+    cellIDs = zeros(1,SeriesCells);
+    SortedOCVs = zeros(1,SeriesCells);
+    SortedCellIDs = zeros(1,SeriesCells);
+    
+    for i = 1:SeriesCells
+        V_OCV(i) = CellArray(i).V_Terminal;
+        cellIDs(i) = CellArray(i).CellSeriesID;
+    end
+    
+    [SortedOCVs, SortedCellIDs] = bubbleSortOCVsWithCellIDs(V_OCV, cellIDs,PrevSortedCellIDs);
+    
+    %Need to find median of data
+    
+    if rem(SeriesCells,2) ==0
+        RefVoltage = (SortedOCVs(SeriesCells/2+1)+SortedOCVs(SeriesCells/2-1))/2;
+    else
+        RefVoltage = SortedOCVs(SeriesCells/2+0.5);
+    end
+    
+    %Determine Cells To balance
+    
+    CellsToCharge = zeros(MaxCellsToCharge,1);
+    CellsToDischarge = zeros(MaxCellsToCharge,1);
+    
+    for i = 1:MaxCellsToCharge
+        CellsToCharge(i) = SortedCellIDs(SeriesCells-(i-1));
+        
+    end
+    for i = 1:MaxCellsToDischarge
+        CellsToDischarge(i) = SortedCellIDs(i);
+    end
+
+%Use last element of these arrays to store how many cells are being
+%balanced
+% CellsToDischarge(TotalCellsToBalance/2+1) = TotalCellsToBalance/2;
+% CellsToCharge(TotalCellsToBalance/2+1) = TotalCellsToBalance/2; 
+
+%Filter Cells that are within buffer zone of the reference voltage.
+
+
+    for i = 1:MaxCellsToCharge
+    
+        tmp = RefVoltage - V_OCV(CellsToCharge(i));
+        if tmp < CentralBuffer
+            CellsToCharge(i) = 0 ; 
+            % CellsToCharge(TotalCellsToBalance/2) = CellsToCharge(TotalCellsToBalance/2)-1;
+        end
+    end
+    for i = 1:MaxCellsToDischarge
+        if V_OCV(CellsToDischarge(i)) - RefVoltage <CentralBuffer
+            CellsToDischarge(i) = 0;
+            % CellsToDischarge(TotalCellsToBalance/2)= CellsToDischarge(TotalCellsToBalance/2)-1;
+        end
+    end
+
+
+%Now all cells ahve beenn checked to be outside of central buffer zone.
+%Wahooo. Now need to check if any of these cells will go outside the safe
+%zone. 
+
+%Check if VOCV is in a top or lower buffer. If they are then can take then
+%can check with V_T calculation. if not can then simiply go past. 
+
+    for i = 1:MaxCellsToDischarge
+        if(CellsToDischarge(i)~=0)
+            if (V_OCV(CellsToDischarge(i))> UpperBuffer )||( V_OCV(CellsToDischarge(i)) < LowerBuffer )
+                CellsToDischarge(i)=0;
+                % CellsToDischarge(TotalCellsToBalance/2)= CellsToDischarge(TotalCellsToBalance/2)-1;
+            end
+        end
+    end
+    for i = 1:MaxCellsToCharge
+        if (CellsToCharge(i)~=0)
+            if (V_OCV(CellsToCharge(i))> UpperBuffer )||( V_OCV(CellsToCharge(i)) < LowerBuffer )
+                CellsToCharge(i)=0;
+                % CellsToDischarge(TotalCellsToBalance/2)= CellsToDischarge(TotalCellsToBalance/2)-1;
+            end
+        end
+    end
+
+
+    BalancingStatus = zeros (1,SeriesCells);
+
+    for i= 1:1:MaxCellsToCharge
+        %Take the value in each element of Cells to Charge as the CellIDs.
+        %These cell ids can then be used to set the BalanceStatus variable to
+        %the correct value. BalanceStatus 0 = nothing, 1 = Charge, 2 =
+        %discharge
+        if(CellsToCharge(i)~=0)
+            BalancingStatus(CellsToCharge(i)) = 1;
+        end
+
+    end
+
+    for i = 1:MaxCellsToDischarge
+        if (CellsToDischarge(i)~=0)
+            BalancingStatus(CellsToDischarge(i)) = 2;
+        end
+    end
+
+
+
+end

@@ -1,0 +1,129 @@
+function [BalancingStatus, SortedCellIDs] = BalancingAlgV1(CellArray, SeriesCells,PrevSortedCellIDs)
+%BALANCINGALG - Algorith Version 1 for sorting out what balancing should be
+%done to what cells. 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Algorithm Parameters:
+
+CentralBufferSize
+MaxCuttOff = 4.2;
+MinCutOff = 2.5;
+
+LowerBuffer = 2.5 + 0.2; % + Internal resistance basically + Buffer. If no cells are in this zone the no chance of cells being unbalanced. 
+UpperBuffer = 4.2 -0.2;
+
+CentralBuffer = 0.05; % If cell voltages are within this zone either side then they won't be balanced. 
+
+TotalCellsToBalance = 6;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Extract OCV and Cell ID Values
+
+V_OCV = zeros(SeriesCells);
+cellIDs = zeros(SeriesCells);
+SortedOCVs = zeros(SeriesCells);
+SortedCellIDs = zeros(SeriesCells);
+
+for i = 1:SeriesCells
+    V_OCV(i) = CellArray(i).V_OCV;
+    cellIDs(i) = CellArray(i).SeriesID;
+end
+
+[SortedOCVs, SortedCellIDs] = bubbleSortOCVsWithCellIDs(V_OCV, cellIDs,PrevSortedCellIDs);
+
+%Need to find median of data
+
+if rem(SeriesCells,2) ==0
+    RefVoltage = (SortedOCVs(SeriesCells/2+1)+SortedOCVs(SeriesCells/2-1))/2;
+else
+    RefVoltage = SortedOCVs(SeriesCells/2+0.5);
+end
+
+%Determine Cells To balance
+
+CellsToCharge = zeros(TotalCellsToBalance/2);
+CellsToDischarge = zeros(TotalCellsToBalance/2);
+
+for i = 1:TotalCellsToBalance/2
+    CellsToCharge(i) = SortedCellIDs(SeriesCells-(i-1));
+    CellsToDischarge(i) = SortedCellIDs(i);
+end
+
+%Use last element of these arrays to store how many cells are being
+%balanced
+CellsToDischarge(TotalCellsToBalance/2+1) = TotalCellsToBalance/2;
+CellsToCharge(TotalCellsToBalance/2+1) = TotalCellsToBalance/2; 
+
+%Filter Cells that are within buffer zone of the reference voltage.
+
+
+for i = 1:TotalCellsToBalance/2
+
+    if RefVoltage - V_OCV(CellsToCharge(i)) < CentralBuffer
+        CellsToCharge(i) = 0 ; 
+        CellsToCharge(TotalCellsToBalance/2) = CellsToCharge(TotalCellsToBalance/2)-1;
+    end
+
+    if V_OCV(CellsToDischarge(i)) - RefVoltage <CentralBuffer
+        CellsToDischarge(i) = 0;
+        CellsToDischarge(TotalCellsToBalance/2)= CellsToDischarge(TotalCellsToBalance/2)-1;
+    end
+
+%Now all cells ahve beenn checked to be outside of central buffer zone.
+%Wahooo. Now need to check if any of these cells will go outside the safe
+%zone. 
+
+%Check if VOCV is in a top or lower buffer. If they are then can take then
+%can check with V_T calculation. if not can then simiply go past. 
+
+for i = 1:TotalCellsToBalance/2
+
+    if V_OCVCellsToDischarge
+
+end
+
+
+
+%function BatteryStatusArray = balanceCells(ParallelStringArray, numCellsToBalance, bufferZoneSize, currentChargeRate, currentDischargeRate, voltageCutoffs)
+    % Extract V_OCV values and cell IDs from ParallelStringArray
+    V_OCVs = [ParallelStringArray.V_OCV];
+    cellIDs = [ParallelStringArray.CellID]; % Assuming CellID is a property
+    
+    % Sort V_OCVs and keep track of the indices
+    [sortedOCVs, sortIndex] = sort(V_OCVs);
+    sortedCellIDs = cellIDs(sortIndex);
+    
+    % Find the median value of V_OCVs
+    medianOCV = median(sortedOCVs);
+    
+    % Determine the cells to balance
+    lowCellsToBalance = sortedCellIDs(1:round(numCellsToBalance/2));
+    highCellsToBalance = sortedCellIDs(end-round(numCellsToBalance/2)+1:end);
+    
+    % Identify cells within the buffer zone
+    lowCellsInBuffer = sortedOCVs(1:round(numCellsToBalance/2)) > (medianOCV - bufferZoneSize);
+    highCellsInBuffer = sortedOCVs(end-round(numCellsToBalance/2)+1:end) < (medianOCV + bufferZoneSize);
+    
+    % Remove cells within the buffer zone from the balancing set
+    lowCellsToBalance(lowCellsInBuffer) = [];
+    highCellsToBalance(highCellsInBuffer) = [];
+    
+    % Initialize BatteryStatusArray with zeros
+    BatteryStatusArray = zeros(1, numel(ParallelStringArray));
+    
+    % Calculate the current for charge/discharge
+    % (assuming currentChargeRate and currentDischargeRate are provided)
+    % ... (additional logic needed here)
+    
+    % Update BatteryStatusArray to indicate which cells to charge or discharge
+    BatteryStatusArray(lowCellsToBalance) = 1; % 1 for charging
+    BatteryStatusArray(highCellsToBalance) = 2; % 2 for discharging
+    
+    % Check if any of the cells will go out of the safe voltage range
+    % ... (additional logic needed here)
+    
+    % Rebalance if necessary
+    % ... (additional logic needed here)
+    
+    % Return the updated BatteryStatusArray
+%end
