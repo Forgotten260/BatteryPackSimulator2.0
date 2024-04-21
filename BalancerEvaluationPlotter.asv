@@ -1,0 +1,207 @@
+%% Capacity of all three
+numStrings=24;
+
+% IdealPack
+FileNumber =124;
+filePath = sprintf('DataOutput/SimulatorOutputData-%d.mat', FileNumber);
+%Load Data
+data = load(filePath);
+% Assuming 'ParallelStringArray' is the variable name in the .mat file
+ParallelStringArrayIdeal = data.ParallelStringArray;
+filePath = sprintf('DataOutput/SimulatorParameterData-%d.mat', FileNumber);
+paramdata = load(filePath);
+ParamDataIdea = paramdata.simulationParams;
+timeIdeal = (1:5:ParamDataIdea.totaltimestep).*ParamDataIdea.timestepSize;
+
+numTimestepsIdeal= length(timeIdeal);
+   
+
+CapacityMatrixIdeal = zeros(numTimestepsIdeal, numStrings);
+VTMatrixIdeal = zeros(numTimestepsIdeal, numStrings);
+for t = 1:numTimestepsIdeal 
+    for s = 1:numStrings
+        CapacityMatrixIdeal(t, s) = ParallelStringArrayIdeal(t, s).CurrentCapacity;
+        VTMatrixIdeal(t,s)= ParallelStringArrayIdeal(t, s).V_Terminal;
+    end
+end
+IdealCapacity = zeros(1,numTimestepsIdeal);
+MinVT_Ideal = zeros(1,numTimestepsIdeal);
+MaxVT_Ideal = zeros(1,numTimestepsIdeal);
+for i = 1:numTimestepsIdeal 
+
+    IdealCapacity(i) = sum(CapacityMatrixIdeal(i,:));
+    MinVT_Ideal(i) = min(VTMatrixIdeal(i,:));
+MaxVT_Ideal(i) = max(VTMatrixIdeal(i,:));
+end
+
+% BalancedPack
+FileNumber =127 ;
+filePath = sprintf('DataOutput/SimulatorOutputData-%d.mat', FileNumber);
+%Load Data
+data = load(filePath);
+% Assuming 'ParallelStringArray' is the variable name in the .mat file
+ParallelStringArrayBal = data.ParallelStringArray;
+filePath = sprintf('DataOutput/SimulatorParameterData-%d.mat', FileNumber);
+paramdata = load(filePath);
+ParamDataBal = paramdata.simulationParams;
+timebal = (1:5:ParamDataBal.totaltimestep).*ParamDataBal.timestepSize;
+
+numTimestepsbal= length(timebal);
+   
+
+capacityMatrixbal = zeros(numTimestepsbal, numStrings);
+VTMatrixBal  = zeros(numTimestepsbal, numStrings);
+for t = 1:numTimestepsbal
+    for s = 1:numStrings
+        capacityMatrixbal(t, s) = ParallelStringArrayBal(t, s).CurrentCapacity;
+        VTMatrixBal (t,s) = ParallelStringArrayBal(t, s).V_Terminal;
+    end
+end
+MinVT_Bal = zeros(1,numTimestepsbal);
+BalCapacity = zeros(1,numTimestepsbal);
+MaxVT_Bal = zeros(1,numTimestepsbal);
+for i = 1:numTimestepsbal
+   BalCapacity(i) = sum(capacityMatrixbal(i,:)) ;
+   MinVT_Bal (i) = min(VTMatrixBal(i,:));
+   MaxVT_Bal (i) = max(VTMatrixBal(i,:));
+end
+
+
+% Extract Values from NonBalancedData
+FileNumber =126;
+filePath = sprintf('DataOutput/SimulatorOutputData-%d.mat', FileNumber);
+%Load Data
+data = load(filePath);
+% Assuming 'ParallelStringArray' is the variable name in the .mat file
+ParallelStringArrayNonBal = data.ParallelStringArray;
+filePath = sprintf('DataOutput/SimulatorParameterData-%d.mat', FileNumber);
+paramdata = load(filePath);
+ParamDataNonBal = paramdata.simulationParams;
+timeNonVar = (1:5:ParamDataNonBal.totaltimestep).*ParamDataNonBal.timestepSize;
+
+numTimestepsNonBal = length(timeNonVar);
+   
+
+CapacityMatrixNonBal  = zeros(numTimestepsNonBal, numStrings);
+VTMattrixNonBal = zeros(numTimestepsNonBal, numStrings);
+for t = 1:numTimestepsNonBal 
+    for s = 1:numStrings
+        CapacityMatrixNonBal(t, s) = ParallelStringArrayNonBal(t, s).CurrentCapacity;
+        VTMattrixNonBal(t,s) = ParallelStringArrayNonBal(t, s).V_Terminal;
+        
+    end
+end
+
+NonBalCapacity = zeros(1,numTimestepsNonBal);
+MinVT_NonBal= zeros(1,numTimestepsNonBal);
+MaxVT_NonBal = zeros(1,numTimestepsNonBal);
+for i = 1:numTimestepsNonBal
+
+    NonBalCapacity(i) = sum(CapacityMatrixNonBal(i,:));
+    MinVT_NonBal(i) = min(VTMattrixNonBal(i,:));
+    MaxVT_NonBal(i) = max(VTMattrixNonBal(i,:));
+end
+%%
+
+% 
+% figure (10)
+% 
+% plot(timeNonVar,NonBalCapacity)
+% hold on
+% plot(timebal,BalCapacity)
+% hold on
+% plot(timeIdeal,IdealCapacity)
+% legend
+% xlim([0 59000]);
+% legend('Non Balanced', 'Balanced', 'Ideal')
+
+
+figure (11)
+plot(timeNonVar,MinVT_NonBal,Color=[0.2 0.7 0.8],LineStyle="-",LineWidth=1.5)
+hold on
+plot(timebal,smooth(MinVT_Bal),Color=[0.8 0.2 0.7],LineStyle="-",LineWidth=1.5)
+hold on
+plot(timeIdeal,MinVT_Ideal,Color=[0.7 0.8 0.2],LineStyle="-",LineWidth=1.5)
+legend
+% xlim([0 60000]);
+lgd = legend('Non Balanced', 'Balanced', 'Ideal',FontName='ArialBold',FontSize=10,FontWeight='bold');
+set(lgd,"LineWidth",0.5)
+ylabel('Minimum Terminal Voltage (V)')
+xlabel('Time (s)')
+set(gca, "Box" ,'on')
+set(gca,'LineWidth',1.5)
+set(gca,"FontWeight",'bold','FontSize',10,'FontName','Arial')
+ax = gca; % Get the handle of the current axes
+
+% Suppose your x-axis currently goes from 0 to 14400 seconds (i.e., 4 hours)
+% and you want to set ticks every 3600 seconds (i.e., every hour)
+ax.XLim = [0, max(timeIdeal)];  % Set x-axis limits from 0 to 4 hours in seconds
+
+% % Set x-ticks for every hour
+% hrsTicks = 0:3600:max(timeIdeal);  % Time in seconds
+% ax.XTick = hrsTicks;
+% 
+% % Convert the tick labels to hours
+% hrsTickLabels = arrayfun(@(x) sprintf('%d hrs', x/3600), hrsTicks, 'UniformOutput', false);
+% ax.XTickLabel = hrsTickLabels;
+
+% Optionally, if you want to increase the intervals to every other hour, you can do:
+ax.XTick = 0:3600*5:max(timeIdeal);  % Every two hours in seconds
+ax.XTickLabel = arrayfun(@(x) sprintf('%d hrs', x/3600), ax.XTick, 'UniformOutput', false);
+
+% Refresh the plot
+drawnow;
+% figure (12)
+% plot(timeNonVar,MaxVT_NonBal)
+% hold on
+% plot(timebal,MaxVT_Bal)
+% hold on
+% plot(timeIdeal,MaxVT_Ideal)
+% legend
+% xlim([0 59000]);
+% legend('Non Balanced', 'Balanced', 'Ideal')
+
+
+%% Delta Plot:
+
+%Data
+
+DeltaData = struct();
+
+DeltaData.A_1.Bal = [-263 423 933 1343 1844 2332];
+DeltaData.A_1.NonBal = [100 1758 3415 5075 6730 8390];
+ 
+DeltaData.A_2.Bal = [-7.5 767.5 1292 1747 2210 2625 ];
+DeltaData.A_2.NonBal = [160 2042.5 3697 5357 7015 8672 ];
+
+DeltaData.A_1_5.Bal = [-47.5 810 1225 1720 2178 2696 ];
+DeltaData.A_1_5.NonBal = [95 1793 3453 5107.5 6770 8424];
+
+
+
+%Plot this data
+
+figure
+
+ylabel('Time Difference from Ideal Pack  (s)')
+xlabel('Cycle Number')
+
+hold on
+plot(DeltaData.A_1.Bal,Color= [0.2 0.7 0.8],LineWidth=1.5, LineStyle="-",Marker="x",MarkerSize = 10)
+plot(DeltaData.A_1.NonBal,Color= [0.2 0.7 0.8],LineWidth=1.5, LineStyle="-.",Marker="x",MarkerSize = 10)
+
+plot(DeltaData.A_1_5.Bal,Color= [0.93,0.69,0.13],LineWidth=1.5, LineStyle="-",Marker="o")
+plot(DeltaData.A_1_5.NonBal,Color= [0.93,0.69,0.13],LineWidth=1.5, LineStyle="-.",Marker="o")
+
+plot(DeltaData.A_2.Bal,Color= [0.45,0.00,0.74],LineWidth=1.5, LineStyle="-",Marker="diamond")
+plot(DeltaData.A_2.NonBal,Color= [0.45,0.00,0.74],LineWidth=1.5, LineStyle="-.",Marker="diamond")
+
+set(gca, "Box" ,'on')
+set(gca,'LineWidth',1.5)
+set(gca,"FontWeight",'bold','FontSize',10,'FontName','Arial')
+
+legendText = {'1.0 A Balanced', '1.0 A Unbalanced', '1.5 A Balanced', '1.5 A Unbalanced','2.0 A Balanced', '2.0 A Unbalanced'};
+
+legend(legendText, "Box","on",FontSize=10, FontWeight="bold", LineWidth=0.5,FontName='Arial',Location='northwest')
+
+xlim([1 6.2])
